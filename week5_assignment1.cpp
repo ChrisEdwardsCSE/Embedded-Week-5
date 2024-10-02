@@ -201,14 +201,37 @@ void remoteRead(bool debug = false){
 
 // ONLY ADD CODE BELOW
 // Use prints and getData() for debugging purposes
+#define JOYSTICK_SENS_YAW 1
+#define JOYSTICK_SENS_PITCH 1
+
+#define POS_LOWERBOUND 30
+#define POS_UPPERBOUND 150
+
+#define TICKS_PER_REV 8192
 
 int main(){
     
     //SETUP CODE HERE
+    DJIMotor yaw_motor(1, CANHandler::CANBUS_2, GIMBLY, "Yaw Motor");
+    DJIMotor pitch_motor(2, CANHandler::CANBUS_2, GIMBLY, "Pitch Motor");
+    
+    int last_yaw_pos = 0, last_pitch_pos = 0;
 
     while(true){ //main loop
+        int yaw_pos = yaw_pos + remote.rightX() * JOYSTICK_SENS_YAW;
+        yaw_motor.setPosition(yaw_pos);
+        yaw_motor.setOutput();
 
-        //MAIN CODE HERE
-
+        /* Assuming that joystick input is the desired relative position to set the motor.
+        Also assuming that JOYSTICK_SENS_PITCH is the conversion scaler to degrees.*/
+        int pitch_pos = pitch_pos + (remote.rightY() * JOYSTICK_SENS_PITCH);
+        if (pitch_pos <= POS_LOWERBOUND) {
+            pitch_pos = POS_LOWERBOUND;
+        }
+        else if (pitch_pos >= POS_UPPERBOUND) {
+            pitch_pos = POS_UPPERBOUND;
+        }
+        pitch_motor.setPosition( (pitch_pos/360) * TICKS_PER_REV);
+        pitch_motor.setOutput();
     }
 }
