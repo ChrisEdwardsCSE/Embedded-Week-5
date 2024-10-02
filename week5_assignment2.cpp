@@ -201,14 +201,60 @@ void remoteRead(bool debug = false){
 
 // ONLY ADD CODE BELOW
 // Use prints and getData() for debugging purposes
+#include <thread>
+#include <chrono>
+
+using namespace std::this_thread;
+using namespace std::chrono;
+
+#define R_FLYWHEEL_SPEED 7000
+#define L_FLYWHEEL_SPEED -7000
+
+#define COOLDOWN_TIME_MS 5000
+
+#define INDEXER_POS_OPEN 90
+#define INDEXER_POS_CLOSED 0
+#define INDEXER_OPEN_3_BALLS_TIME_MS 1500 // Time that indexer must be open for 3 balls to fall
+
 
 int main(){
     
     //SETUP CODE HERE
+    DJIMotor indexer(1, CANHandler::CANBUS_2, C610, "Indexer");
+    DJIMotor r_flywheel(2, CANHandler::CANBUS_2, M3508, "Right Flywheel");
+    DJIMotor l_flywheel(3, CANHandler::CANBUS_2, M3508, "Left Flywheel");
 
+    int balls_shot_count = 0;
+    bool cooldown_flag = 0;
     while(true){ //main loop
+        remoteRead();
+        switch(remote.leftSwitch()) {
+            case(Remote::SwitchState::UP):
+                if (cooldown_flag) {
+                    printf("Switch to MID before shooting again\n");
+                }
+                else {
+                    // Open indexer hatch for long enough to allow 3 balls to be delivered to flywheels
+                    indexer.setPosition(INDEXER_POS_OPEN);
+                    indexer.setOutput();
+                    sleep_for(milliseconds(INDEXER_OPEN_3_BALLS_TIME_MS));
+                    indexer.setPosition(INDEXER_POS_CLOSED);
+                    indexer.setOutput();
 
-        //MAIN CODE HERE
+                    cooldown_flag = 1;
+                }
+                break;
 
+            case(Remote::SwitchState::MID):
+                r_flywheel.setSpeed(R_FLYWHEEL_SPEED);
+                l_flywheel.setSpeed(L_FLYWHEEL_SPEED);
+                cooldown_flag = 0;
+                break;
+                
+            default: // DOWN or UNKNOWN
+                r_flywheel.setSpeed(0);
+                l_flywheel.setSpeed(0);
+                break;
+        }
     }
 }
